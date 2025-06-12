@@ -1,0 +1,30 @@
+{
+  "name": "@titorelli-org/jwks-store",
+  "version": "0.1.0",
+  "description": "A simple file-based JWKS storage",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup"
+  },
+  "keywords": [
+    "Titorelli",
+    "JWKS",
+    "oidc"
+  ],
+  "author": "YChebotaev <yury@chebotaev.ru>",
+  "license": "AGPL-3.0-only",
+  "devDependencies": {
+    "@types/node": "^24.0.1",
+    "jose": "^6.0.11",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "mkdirp": "^3.0.1"
+  }
+}
