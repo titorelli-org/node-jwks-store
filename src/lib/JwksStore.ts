@@ -8,7 +8,7 @@ export class JwksStore {
   }
 
   public async get() {
-    if (this.isFileExists()) {
+    if (await this.isFileExists()) {
       return this.readFromFile();
     }
 
@@ -19,9 +19,9 @@ export class JwksStore {
     return data;
   }
 
-  private isFileExists() {
+  private async isFileExists() {
     try {
-      access(this.filename, constants.R_OK | constants.W_OK);
+      await access(this.filename, constants.R_OK | constants.W_OK);
 
       return true;
     } catch (err) {
@@ -32,7 +32,7 @@ export class JwksStore {
   }
 
   private async readFromFile() {
-    if (!this.isFileExists()) {
+    if (!(await this.isFileExists())) {
       throw new Error("Cannot read file: " + this.filename);
     }
 
