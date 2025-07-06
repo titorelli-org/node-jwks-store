@@ -24,8 +24,12 @@ export class JwksStore {
       await access(this.filename, constants.R_OK | constants.W_OK);
 
       return true;
-    } catch (err) {
-      console.warn("Error when checking file access rights:", err);
+    } catch (_err) {
+      const err = _err as Error;
+
+      if (!err.message.includes("no such file or directory")) {
+        console.error("Error when checking file access rights:", err);
+      }
 
       return false;
     }
