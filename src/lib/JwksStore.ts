@@ -1,95 +1,106 @@
-import { dirname } from "node:path";
-import { access, constants, readFile, writeFile } from "node:fs/promises";
-import { mkdirpSync } from "mkdirp";
+import {dirname} from "node:path";
+import {access, constants, readFile, writeFile} from "node:fs/promises";
+import {mkdirpSync} from "mkdirp";
+import {JWK} from "jose";
 
 export class JwksStore {
-  constructor(private readonly filename: string) {
-    mkdirpSync(dirname(filename));
-  }
-
-  public async get() {
-    if (await this.isFileExists()) {
-      return this.readFromFile();
+    constructor(private readonly filename: string) {
+        mkdirpSync(dirname(filename));
     }
 
-    const data = await this.generate();
+    public async get() {
+        if (await this.isFileExists()) {
+            return this.readFromFile();
+        }
 
-    await this.writeToFile(data);
+        const data = await this.generate();
 
-    return data;
-  }
+        await this.writeToFile(data);
 
-  private async isFileExists() {
-    try {
-      await access(this.filename, constants.R_OK | constants.W_OK);
-
-      return true;
-    } catch (_err) {
-      const err = _err as Error;
-
-      if (!err.message.includes("no such file or directory")) {
-        console.error("Error when checking file access rights:", err);
-      }
-
-      return false;
-    }
-  }
-
-  private async readFromFile() {
-    if (!(await this.isFileExists())) {
-      throw new Error("Cannot read file: " + this.filename);
+        return data;
     }
 
-    const text = await readFile(this.filename, { encoding: "utf-8" });
-    const data = JSON.parse(text);
+    public async selectForVerify(needleAlg: string, needleKid: string): Promise<JWK | undefined> {
+        const { keys } = await this.get()
 
-    return data;
-  }
+        for (const [i, { alg, kid }] of Object.entries(keys)) {
+            if (needleAlg === alg && needleKid === kid) {
+                return keys[i]
+            }
+        }
+    }
 
-  private async writeToFile(data: Awaited<ReturnType<typeof this.generate>>) {
-    const text = JSON.stringify(data, null, 2);
+    private async isFileExists() {
+        try {
+            await access(this.filename, constants.R_OK | constants.W_OK);
 
-    await writeFile(this.filename, text, { encoding: "utf-8" });
-  }
+            return true;
+        } catch (_err) {
+            const err = _err as Error;
 
-  private async generate() {
-    const { generateKeyPair, exportJWK } = await import("jose");
+            if (!err.message.includes("no such file or directory")) {
+                console.error("Error when checking file access rights:", err);
+            }
 
-    const rsaSigningKey = await generateKeyPair("RS256", { extractable: true });
-    const ecSigningKey = await generateKeyPair("ES256", { extractable: true });
+            return false;
+        }
+    }
 
-    // const rsaEncryptionKey = await generateKeyPair("RSA-OAEP", {
-    //   extractable: true,
-    // });
-    // const ecEncryptionKey = await generateKeyPair("ECDH-ES", {
-    //   extractable: true,
-    // });
+    private async readFromFile() {
+        if (!(await this.isFileExists())) {
+            throw new Error("Cannot read file: " + this.filename);
+        }
 
-    const [rsaSigJwk, ecSigJwk /*, rsaEncJwk, ecEncJwk*/] = await Promise.all([
-      exportJWK(rsaSigningKey.privateKey),
-      exportJWK(ecSigningKey.privateKey),
-      // exportJWK(rsaEncryptionKey.privateKey),
-      // exportJWK(ecEncryptionKey.privateKey),
-    ]);
+        const text = await readFile(this.filename, {encoding: "utf-8"});
+        const data = JSON.parse(text) as { keys: JWK[] };
 
-    rsaSigJwk.kid = "sig-rs-0";
-    rsaSigJwk.alg = "RS256";
-    rsaSigJwk.use = "sig";
+        return data;
+    }
 
-    ecSigJwk.kid = "sig-ec-0";
-    ecSigJwk.alg = "ES256";
-    ecSigJwk.use = "sig";
+    private async writeToFile(data: { keys: JWK[] }) {
+        const text = JSON.stringify(data, null, 2);
 
-    // rsaEncJwk.kid = "enc-rs-0";
-    // rsaEncJwk.alg = "RSA-OAEP";
-    // rsaEncJwk.use = "enc";
+        await writeFile(this.filename, text, {encoding: "utf-8"});
+    }
 
-    // ecEncJwk.kid = "enc-ec-0";
-    // ecEncJwk.alg = "ECDH-ES";
-    // ecEncJwk.use = "enc";
+    private async generate() {
+        const {generateKeyPair, exportJWK} = await import("jose");
 
-    return {
-      keys: [rsaSigJwk, ecSigJwk],
-    };
-  }
+        const rsaSigningKey = await generateKeyPair("RS256", {extractable: true});
+        const ecSigningKey = await generateKeyPair("ES256", {extractable: true});
+
+        // const rsaEncryptionKey = await generateKeyPair("RSA-OAEP", {
+        //   extractable: true,
+        // });
+        // const ecEncryptionKey = await generateKeyPair("ECDH-ES", {
+        //   extractable: true,
+        // });
+
+        const [rsaSigJwk, ecSigJwk /*, rsaEncJwk, ecEncJwk*/] = await Promise.all([
+            exportJWK(rsaSigningKey.privateKey),
+            exportJWK(ecSigningKey.privateKey),
+            // exportJWK(rsaEncryptionKey.privateKey),
+            // exportJWK(ecEncryptionKey.privateKey),
+        ]);
+
+        rsaSigJwk.kid = "sig-rs-0";
+        rsaSigJwk.alg = "RS256";
+        rsaSigJwk.use = "sig";
+
+        ecSigJwk.kid = "sig-ec-0";
+        ecSigJwk.alg = "ES256";
+        ecSigJwk.use = "sig";
+
+        // rsaEncJwk.kid = "enc-rs-0";
+        // rsaEncJwk.alg = "RSA-OAEP";
+        // rsaEncJwk.use = "enc";
+
+        // ecEncJwk.kid = "enc-ec-0";
+        // ecEncJwk.alg = "ECDH-ES";
+        // ecEncJwk.use = "enc";
+
+        return {
+            keys: [rsaSigJwk, ecSigJwk],
+        };
+    }
 }
